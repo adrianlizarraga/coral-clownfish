@@ -18,43 +18,6 @@ export default class DumbSuggester extends Suggester {
         this._invalid = 0;
     }
 
-    _isBoardValid(board, row, col) {
-        const size = board.length - 1;
-        let rowFishCount = board.map(() => 0);
-        let colFishCount = board.map(() => 0);
-
-        for (let i = 1; i <= row; ++i) {
-            for (let j = 1; j <= col; ++j) {
-                const cell = board[i][j];
-                const currentType = cell.type;
-                const colConstraint = board[0][j].value;
-                const rowConstraint = board[i][0].value;
-
-                if (currentType == 'clownfish') {
-                    if (!this._isValidFishPlacement(i, j, board)) {
-                        return false;
-                    }
-
-                    rowFishCount[i] += 1;
-                    colFishCount[j] += 1;
-                }
-
-                //debugger;
-                if (rowFishCount[i] > rowConstraint || colFishCount[j] > colConstraint) {
-                    return false;
-                }
-
-                if ((j == size && rowFishCount[i] != rowConstraint) || (i == size && colFishCount[j] != colConstraint)) {
-                    debugger;
-                    return false;
-                }
-
-            }
-        }
-
-        return true;
-    }
-
     _isValidFishPlacement(row, col, board) {
         return this._isAdjacentToType(row, col, board, 'coral') && !this._isAdjacentToType(row, col, board, 'clownfish', true);
     }
@@ -64,9 +27,6 @@ export default class DumbSuggester extends Suggester {
         const endRow = row < board.length - 1 ? row + 1: row;
         const startCol = col > 1 ? col - 1: col;
         const endCol = col < board.length - 1 ? col + 1: col;
-
-        //console.log(`${startRow} ${endRow} ${startCol} ${endCol}`);
-        //console.log(board);
 
         for (let i = startRow; i <= endRow; ++i) {
             for (let j = startCol; j <= endCol; ++j) {
@@ -88,115 +48,6 @@ export default class DumbSuggester extends Suggester {
         return false;
     }
 
-    _getPossibleCellTypes(row, col, board) {
-        const cell = board[row][col];
-        const possibleTypes = [];
-
-        if (cell.type == 'coral') {
-            possibleTypes.push('coral');
-        }
-        else {
-            if (this._isAdjacentToType(row, col, board, 'coral')) {
-                possibleTypes.push('clownfish');
-            }
-            possibleTypes.push('water');
-        }
-
-        return possibleTypes; // water, clownfish
-    }
-
-    _getPreviousNonCoralCell(row, col, board) {
-        for (let i = row; i >= 1; i--) {
-            for (let j = col; j >= 1; j--) {
-                if (i == row && j == col) {
-                    continue;
-                }
-
-                const cell = board[i][j];
-
-                if (cell.type != 'coral') {
-                    return {row: i, col: j};
-                }
-            }
-        }
-    }
-
-    _solve(board, startRow, startCol) {
-        const size = board.length - 1;
-        let prevCellCoordinates = null;
-        //const board = game.board.map(row => row.slice());
-
-        for (let i = startRow; i < size+1; ++i) {
-            for (let j = startCol; j < size+1; ++j) {
-                const cell = board[i][j];
-                const currentType = cell.type;
-                //const colConstraint = game.board[0][j].value;
-                //const rowConstraint = game.board[i][0].value;
-
-                //console.log(`colConstraints ${colConstraint}`);
-                //console.log(`rowConstraints ${rowConstraint}`);
-                //console.log(`(${i}, ${j}) - ${cell.type}`)
-               // debugger;
-                if (currentType == 'coral') {
-                    continue;
-                }
-
-                const possibleTypes = this._getPossibleCellTypes(i, j, board);
-                if (possibleTypes.length == 1) {
-                    cell.type == possibleTypes[0];
-                    continue;
-                }
-
-                const typesToTry = possibleTypes.filter(type => cell.types.indexOf(type) < 0);
-                console.log(cell.types);
-                console.log(typesToTry);
-                //debugger;
-
-                // set first possible type
-                for (let k = 0; k < typesToTry.length; ++k) {
-                    if (currentType == typesToTry[k]) {
-                        continue;
-                    }
-                    console.log(`(${i}, ${j}) - Trying ${typesToTry[k]}`);
-                    cell.type = typesToTry[k];
-                    cell.types.push(typesToTry[k]);
-
-                    if (this._isBoardValid(board, i, j)) {
-                        console.log('VALID');
-                        break;
-                    }
-                    else{
-                        console.log('INVALID');
-                    }
-                }
-
-                // Backtrack
-                if (cell.type == 'empty' || !this._isBoardValid(board, i, j)) {
-                    cell.type = 'empty';
-                    cell.types = [];
-                    //debugger;
-
-                    prevCellCoordinates = this._getPreviousNonCoralCell(i, j, board);
-                    console.log(`(${i}, ${j}) - backtracking to (${prevCellCoordinates.row}, ${prevCellCoordinates.col})`);
-                    const prevCell = board[prevCellCoordinates.row][prevCellCoordinates.col]
-
-                    prevCell.type = 'empty';
-                    break;
-                    //return this._solve(board, prevCellCoordinates.row, prevCellCoordinates.col);
-                }
-            }
-
-            if (prevCellCoordinates) {
-                break;
-            }
-        }
-
-        if (prevCellCoordinates) {
-            return this._solve(board, prevCellCoordinates.row, prevCellCoordinates.col);
-        }
-
-        return board;
-    }
 
     _printBoard(board) {
         for (let i = 1; i < board.length; ++i) {
@@ -253,7 +104,7 @@ export default class DumbSuggester extends Suggester {
 
                     // Top of coral
                     if (fishState == 1) {
-                        if (topCell && topCell.type == 'empty') {
+                        if (topCell && (topCell.type == 'empty' || topCell.type == 'water')) {
                             topCell.type = 'clownfish';
 
                             rowFishCount[i-1] += 1;
@@ -273,7 +124,7 @@ export default class DumbSuggester extends Suggester {
 
                     // Right of coral
                     else if (fishState == 2) {
-                        if (rightCell && rightCell.type == 'empty') {
+                        if (rightCell && (rightCell.type == 'empty' || rightCell.type == 'water')) {
                             rightCell.type = 'clownfish';
 
                             rowFishCount[i] += 1;
@@ -293,7 +144,7 @@ export default class DumbSuggester extends Suggester {
 
                     // Below coral
                     else if (fishState == 3) {
-                        if (bottomCell && bottomCell.type == 'empty') {
+                        if (bottomCell && (bottomCell.type == 'empty' || bottomCell.type == 'water')) {
                             bottomCell.type = 'clownfish';
 
                             rowFishCount[i+1] += 1;
@@ -313,7 +164,7 @@ export default class DumbSuggester extends Suggester {
 
                     // Left of coral
                     else if (fishState == 4) {
-                        if (leftCell && leftCell.type == 'empty') {
+                        if (leftCell && (leftCell.type == 'empty' || leftCell.type == 'water')) {
                             leftCell.type = 'clownfish';
 
                             rowFishCount[i] += 1;
@@ -372,117 +223,7 @@ export default class DumbSuggester extends Suggester {
         return true;
     }
 
-    _arraysEqual(a, b) {
-        for (let i = 0; i < a.length; ++i) {
-            if (a[i] != b[i]) return false;
-        }
-
-        return true;
-    }
-
-    _arrayStartsWith(a, b) {
-        for (let i = 0; i < b.length; ++i) {
-            if (b[i] != a[i]) return false;
-        }
-
-        return true;
-    }
-
-    _skipState(state) {
-        return this._states.some(s => this._arrayStartsWith(state, s));
-    }
-
-    _loopManyTimes(board, loopLimits) {
-        this._doLoopManyTimes(board, loopLimits, [], 0);
-    }
-
-    _doLoopManyTimes(board, loopLimits, args, index) {
-        if (!loopLimits.length) {
-            if (this._skipState(args)) {
-                //console.log(`Skipped state ${args.join()}`);
-                this._skipped += 1;
-                return false;
-            }
-            this._resetBoard(board);
-
-            const usedStates = this._setBoardState(board, args);
-
-            this._processed += 1;
-            if (!usedStates) {
-                if (this._isBoardStateValid(board)) {
-                    console.log(args);
-                    return true;
-                }
-                else {
-                    this._invalid += 1;
-                }
-            }
-            else if (usedStates && usedStates.length < args.length) {
-                console.log(`Pushed state ${usedStates.join()} at ${args.join()}`);
-                this._states.push(usedStates);
-                console.log(`skipped: ${this._skipped}, processed: ${this._processed}, invalid: ${this._invalid}`);
-            }
-
-            return false;
-        }
-        else {
-            const otherLoopLimits = loopLimits.slice(1);
-
-            for (args[index] = 1; args[index] <= loopLimits[0]; ++args[index]) {
-                if (this._doLoopManyTimes(board, otherLoopLimits, args, index + 1)) {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-    }
-
-    _everyPermutation(args, board) {
-        const indices = args.map(a => a.min);
-
-        for (let j = args.length; j >= 0;) {
-            //if (fn(indices)) {
-            //    break;
-            //}
-
-            if (this._skipState(indices)) {
-                //console.log(`Skipped state ${indices.join()}`);
-                this._skipped += 1;
-            }
-            else {
-                this._resetBoard(board);
-
-                const usedStates = this._setBoardState(board, indices);
-
-                this._processed += 1;
-                if (!usedStates) {
-                    if (this._isBoardStateValid(board)) {
-                        console.log(indices);
-                        return;
-                    }
-                    else {
-                        this._invalid += 1;
-                    }
-                }
-                else if (usedStates && usedStates.length < indices.length) {
-                    console.log(`Pushed state ${usedStates.join()} at ${indices.join()}`);
-                    this._states.push(usedStates);
-                    console.log(`skipped: ${this._skipped}, processed: ${this._processed}, invalid: ${this._invalid}`);
-                }
-            }
-
-            for (j = args.length; j--;) {
-                if (indices[j] < args[j].max) {
-                    ++indices[j];
-                    break;
-                }
-                indices[j] = args[j].min;
-            }
-        }
-    }
-
-    _allCombinations(lengths, board) {
+    _solve(lengths, board) {
         const n = lengths.length;
         let indices = [...Array(n)].map(() => 0);
 
@@ -497,7 +238,6 @@ export default class DumbSuggester extends Suggester {
             this._processed += 1;
             if (!usedStates) {
                 if (this._isBoardStateValid(board)) {
-                    console.log(args);
                     return args;
                 }
                 else {
@@ -505,8 +245,8 @@ export default class DumbSuggester extends Suggester {
                 }
             }
             else if (usedStates && usedStates.length < indices.length) {
+
                 // Skip by setting later indices to maximum
-                //console.log(`Skipping from ${indices.join()}`);
                 indices = indices.map((value, index) => {
                     if (index >= usedStates.length) {
                         return lengths[index] - 1;
@@ -515,8 +255,6 @@ export default class DumbSuggester extends Suggester {
                         return value;
                     }
                 });
-
-                //console.log(`TO ${indices.join()}`);
             }
 
             ++indices[n-1];
@@ -559,23 +297,42 @@ export default class DumbSuggester extends Suggester {
         const board = game.board.map(row => row.map(cell => Object.assign({}, cell)));
         const numberCorals = board.slice(1).reduce((total, row) => total + row.slice(1).reduce((t, cell) => t + (cell.type == 'coral' ? 1 : 0), 0), 0);
         const loopLimits = [...Array(numberCorals)].map(() => 4);
-        const l = [...Array(numberCorals)].map(() => ({min: 1, max: 5}));
 
-        //debugger;
-
-        console.log(numberCorals);
-        console.log(loopLimits);
         console.time('DFS');
-        //this._loopManyTimes(board, loopLimits);
-        //this._everyPermutation(l, board);
-        this._allCombinations(loopLimits, board);
+        const state = this._solve(loopLimits, board);
         console.timeEnd('DFS');
 
-        // Pick a non coral cell
-        do {
-            row = this._getRandomInt(1, size);
-            column = this._getRandomInt(1, size);
-        } while (game.board[row][column].type == 'coral');
+        console.log(state);
+
+        this._setBoardState(board, state);
+
+        // Fill in water
+        board.forEach(row => {
+            row.forEach(cell => {
+                if (cell.type == 'empty') {
+                    cell.type = 'water';
+                }
+            });
+        })
+
+        this._printBoard(board);
+
+        for (let i = 1; i <= size; ++i) {
+            for (let j = 1; j <= size; ++j) {
+                const cell = game.board[i][j];
+                const solvedCell = board[i][j];
+
+                if (cell.type !== solvedCell.type) {
+                    row = i;
+                    column = j;
+                    break;
+                }
+            }
+
+            if (row && column) {
+                break;
+            }
+        }
 
         return new CellSuggestion(row, column);
     }
